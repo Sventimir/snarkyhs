@@ -1,0 +1,62 @@
+name:                snarkyhs
+version:             0.1.0.0
+github:              "Sventimir/snarkyhs"
+license:             BSD3
+author:              "Sventimir"
+maintainer:          "svantimir@gmail.com"
+copyright:           "2023 Sventimir"
+
+extra-source-files:
+- README.md
+
+# Metadata used when publishing your package
+# synopsis:            A library for constructing ZK SNARKs 
+# category:            cryptography
+
+# To avoid duplicated efforts in documentation and dealing with the
+# complications of embedding Haddock markup inside cabal files, it is
+# common to point users to the README.md file.
+description:         Please see the README on GitHub at <https://github.com/githubuser/snarkyhs#readme>
+
+dependencies:
+- base >= 4.7 && < 5
+- groups
+
+ghc-options:
+- -Wall
+- -Wcompat
+- -Widentities
+- -Wincomplete-record-updates
+- -Wincomplete-uni-patterns
+- -Wmissing-export-lists
+- -Wmissing-home-modules
+- -Wpartial-fields
+- -Wredundant-constraints
+
+library:
+  source-dirs: src
+
+executables:
+  snarkyhs-exe:
+    main:                Main.hs
+    source-dirs:         app
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - snarkyhs
+
+tests:
+  snarkyhs-test:
+    main:                Spec.hs
+    source-dirs:         test
+    ghc-options:
+    - -threaded
+    - -rtsopts
+    - -with-rtsopts=-N
+    dependencies:
+    - snarkyhs
+    - groups
+    - hspec
+    - QuickCheck
