@@ -1,7 +1,7 @@
 module Polynomial (testPolynomial) where
 
 import Data.Group (Group(..))
-import Data.List (all, sort)
+import Data.List (sort)
 import Data.Polynomial
 import Data.Ring (Ring(..), zero) 
 import Test.Hspec
@@ -85,7 +85,7 @@ polynomialMonotonicBeyondRoots (NonZero scl, NonEmpty rs, Positive eps)
   roots = sort rs
   p = fromRoots scl roots
   maxExptEven = even $ degree p
-  leadingCoefficient = last $ coefficients p
+  leadingCoefficient = head $ coefficients p
   x1 = head roots - eps
   x2 = last roots + eps
 
