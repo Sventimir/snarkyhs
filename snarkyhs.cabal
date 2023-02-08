@@ -1,6 +1,6 @@
 cabal-version: 1.12
 
--- This file has been generated from package.yaml by hpack version 0.35.1.
+-- This file has been generated from package.yaml by hpack version 0.35.2.
 --
 -- see: https://github.com/sol/hpack
 
@@ -26,6 +26,7 @@ library
   exposed-modules:
       Data.Polynomial
       Data.Ring
+      Encryption.Homomorphic
   other-modules:
       Paths_snarkyhs
   hs-source-dirs:
@@ -53,6 +54,7 @@ test-suite snarkyhs-test
   type: exitcode-stdio-1.0
   main-is: Spec.hs
   other-modules:
+      Encryption
       Polynomial
       Paths_snarkyhs
   hs-source-dirs:
