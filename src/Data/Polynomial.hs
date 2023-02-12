@@ -13,8 +13,21 @@ import Data.Ring (Ring(..), prod)
 
 data Polynomial a = Polynomial
   { coefficients :: [a] }
-  deriving (Show)
 
+
+instance (Ord a, Num a, Show a) => Show (Polynomial a) where
+  show p@(Polynomial xs) = joinXs (degree p) xs
+    where
+    showC c = if abs c == 1 then "" else show (abs c)
+    showD 0 = ""
+    showD 1 = "x"
+    showD ex = "x^" <> show ex
+    showSign c = if c < 0 then " - " else " + "
+    joinXs _ [] = "0"
+    joinXs d (c : cs) = showC c <> showD d <> joinRest (d - 1) cs
+    joinRest _ [] = ""
+    joinRest d (0 : cs) = joinRest (d - 1) cs
+    joinRest d (c : cs) = showSign c <> showC c <> showD d <> joinRest (d - 1) cs
 
 eval :: Num a => Polynomial a -> a -> a
 eval p x = fst . foldl addTerm (fromInteger 0, degree p) $ coefficients p
@@ -86,3 +99,5 @@ equilong padding as bs = zip (pad as) (pad bs)
   where
   len = max (length as) (length bs)
   pad xs = replicate (len - length xs) padding <> xs
+
+  
