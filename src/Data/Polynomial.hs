@@ -5,7 +5,8 @@ module Data.Polynomial
   , fromCoefficients
   , fromRoots
   , scale
-  , degree )
+  , degree
+  , (</>) )
 where
 
 import Data.Group (Group(..), Abelian)
@@ -19,24 +20,27 @@ instance (Ord a, Num a, Show a) => Show (Polynomial a) where
   show p@(Polynomial xs) = joinXs (degree p) xs
     where
     showC c = if abs c == 1 then "" else show (abs c)
-    showD 0 = ""
-    showD 1 = "x"
-    showD ex = "x^" <> show ex
-    showSign c = if c < 0 then " - " else " + "
+    showX 0 = ""
+    showX 1 = "x"
+    showX ex = "x^" <> show ex
+    showSign c
+      | c < 0 = " - "
+      | otherwise = " + "
     joinXs _ [] = "0"
-    joinXs d (c : cs) = showC c <> showD d <> joinRest (d - 1) cs
+    joinXs _ [c] = show c
+    joinXs d (c : cs) = showC c <> showX d <> joinRest (d - 1) cs
     joinRest _ [] = ""
     joinRest d (0 : cs) = joinRest (d - 1) cs
-    joinRest d (c : cs) = showSign c <> showC c <> showD d <> joinRest (d - 1) cs
+    joinRest d (c : cs) = showSign c <> showC c <> showX d <> joinRest (d - 1) cs
 
 eval :: Num a => Polynomial a -> a -> a
 eval p x = fst . foldl addTerm (fromInteger 0, degree p) $ coefficients p
   where
   addTerm (total, expt) c = (total + c * (x ^ expt), expt - 1)
 
-scale :: (Eq a, Num a) => Polynomial a -> a -> Polynomial a
-scale _ 0 = Polynomial []
-scale (Polynomial ps) s = Polynomial ((* s) <$> ps)
+scale :: (Eq a, Num a) => a -> Polynomial a -> Polynomial a
+scale 0 _ = Polynomial []
+scale s (Polynomial ps) = Polynomial ((* s) <$> ps)
 
 normalize :: (Eq a, Num a) => Polynomial a -> Polynomial a
 normalize (Polynomial ps) = Polynomial $ dropWhile (== 0) ps
@@ -49,7 +53,7 @@ fromCoefficients :: (Eq a, Num a) => [a] -> Polynomial a
 fromCoefficients cs = Polynomial $ dropWhile (== 0) cs
 
 fromRoots :: (Eq a, Num a) => a -> [a] -> Polynomial a
-fromRoots scl rs = normalize $ scale (prod ((\r -> Polynomial [1, -r]) <$> rs)) scl
+fromRoots scl rs = normalize . scale scl $ prod ((\r -> Polynomial [1, -r]) <$> rs)
 
 instance (Eq a, Num a) => Eq (Polynomial a) where
   (Polynomial ps) == (Polynomial qs) = ps == qs
@@ -100,4 +104,20 @@ equilong padding as bs = zip (pad as) (pad bs)
   len = max (length as) (length bs)
   pad xs = replicate (len - length xs) padding <> xs
 
-  
+(</>) :: Integral a => Polynomial a -> Polynomial a -> (Polynomial a, Polynomial a)
+_ </> (Polynomial []) = error "Polynomial: division by 0 undefined."
+p </> divisor@(Polynomial ds) = divPolynomial mempty p
+  where
+  divisLen = length ds
+  divPolynomial acc (Polynomial coeffs) =
+    let degDiff = length coeffs - divisLen in
+      if degDiff < 0
+      then (normalize acc, Polynomial coeffs)
+      else
+        let (c, r) = divMod (head coeffs) (head ds)
+            acc' = Polynomial (c : replicate degDiff 0)
+            divis = divisor <.> scale (-1) acc'
+            remainder = Polynomial coeffs <> divis in
+          if r == 0
+          then divPolynomial (acc <> acc') $ normalize remainder
+          else (normalize (acc <> acc'), normalize remainder)

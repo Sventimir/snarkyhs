@@ -46,6 +46,13 @@ testPolynomial = do
       property hasDegreeRoots
     it "Polynomial is monotonic beyond its roots." $
       property polynomialMonotonicBeyondRoots
+  describe "Test division." $ do
+    it "Result * divisor + the remainder gives the dividend." $
+      property (divisionResultCheck :: P -> NonZeroPolynomial Integer -> Bool)
+    it "Zero is neutral with respect to division" $
+      property $ \p -> p </> (unit :: P) == (p, mempty)
+    it "Division by itself returns unit." $
+      property $ \(NonZeroPolynomial p) -> (p :: P) </> p == (unit, mempty)
     
 
 associative :: Eq a => (a -> a -> a) -> (a, a, a) -> Bool
@@ -58,7 +65,7 @@ neutral :: Eq a => (a -> a -> a) -> a -> a -> Bool
 neutral op neutr a = op a neutr == a
 
 scaleIsMult :: (P, Integer) -> Bool
-scaleIsMult (p, s) = scale p s == (p <.> fromCoefficients [s])
+scaleIsMult (p, s) = scale s p == (p <.> fromCoefficients [s])
 
 distributive :: Eq a => (a -> a -> a) -> (a -> a -> a) -> (a, a, a) -> Bool
 distributive add mult (a, b, c) = a `mult` (b `add` c) == (a `mult` b) `add` (a `mult` c)
@@ -89,6 +96,22 @@ polynomialMonotonicBeyondRoots (NonZero scl, NonEmpty rs, Positive eps)
   x1 = head roots - eps
   x2 = last roots + eps
 
+divisionResultCheck :: Integral a => Polynomial a -> NonZeroPolynomial a -> Bool
+divisionResultCheck a (NonZeroPolynomial b) =
+  let (q, r) = a </> b in
+    (q <.> b) <> r == a
+
 instance (Eq a, Num a, Arbitrary a) => Arbitrary (Polynomial a) where
   arbitrary = fromCoefficients <$> arbitrary
 
+newtype NonZeroPolynomial a = NonZeroPolynomial (Polynomial a)
+
+instance (Eq a, Num a, Arbitrary a) => Arbitrary (NonZeroPolynomial a) where
+  arbitrary =
+    NonZeroPolynomial . fromCoefficients <$> arbitrary `suchThat` doesNotStartWithZero
+    where
+    doesNotStartWithZero [] = False
+    doesNotStartWithZero (c : _) = c /= 0
+
+instance (Num a, Ord a, Show a) => Show (NonZeroPolynomial a) where
+  show (NonZeroPolynomial p) = show p
