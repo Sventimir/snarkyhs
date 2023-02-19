@@ -1,4 +1,4 @@
-module Encryption where
+module Encryption (testEncryption) where
 
 import Encryption.Homomorphic
 import Test.QuickCheck
@@ -9,17 +9,23 @@ type PInt = Positive Integer
 testEncryption :: Spec
 testEncryption = do
   describe "Test homomorphism." $ do
-    it "Addition is homomorphic." $
-      property (homomorphicUnderAddition :: (EncryptionSpec Integer, PInt, PInt) -> Bool)
+    it "Addition of pure values is homomorphic." $
+      property (homomorphicUnderPureAddition :: (EncryptionSpec Integer, PInt, PInt) -> Bool)
+    it "Addition of encrypted values is homomorphic." $
+      property (homomorphicUnderEncryptedAddition :: (EncryptionSpec Integer, PInt, PInt) -> Bool)
     it "Multiplication is homomorphic" $
       property (homomorphicUnderMultiplication :: (EncryptionSpec Integer, PInt, PInt) -> Bool)
 
 
-homomorphicUnderAddition :: (Eq a, Integral a, Num a) => (EncryptionSpec a, Positive a, Positive a) -> Bool
-homomorphicUnderAddition (enc, Positive a, Positive b) =
-  addEnc (encrypt enc a) b == encrypt enc (a + b)
+homomorphicUnderPureAddition :: Integral a => (EncryptionSpec a, Positive a, Positive a) -> Bool
+homomorphicUnderPureAddition (enc, Positive a, Positive b) =
+  addEncPure (encrypt enc a) b == encrypt enc (a + b)
 
-homomorphicUnderMultiplication :: (Eq a, Integral a, Num a) =>
+homomorphicUnderEncryptedAddition :: Integral a => (EncryptionSpec a, Positive a, Positive a) -> Bool
+homomorphicUnderEncryptedAddition (enc, Positive a, Positive b) =
+  addEnc (encrypt enc a) (encrypt enc b) == Just (encrypt enc (a + b))
+  
+homomorphicUnderMultiplication :: Integral a =>
                                   (EncryptionSpec a, Positive a, Positive a) -> Bool
 homomorphicUnderMultiplication (enc, Positive a, Positive b) =
   mulEnc (encrypt enc a) b == encrypt enc (a * b)
