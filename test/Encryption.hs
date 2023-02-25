@@ -1,12 +1,12 @@
 module Encryption (testEncryption) where
 
 import Data.Polynomial
--- import Data.Polynomial.Encrypted
+import Data.Polynomial.Encrypted
 import Encryption.Homomorphic
 import Test.QuickCheck
 import Test.Hspec
 import Generators
-import Polynomial
+import Polynomial()
 
 type Enc = SomeEncryption Integer
 
@@ -19,8 +19,8 @@ testEncryption = do
       property (homomorphicUnderEncryptedAddition :: (Enc, Integer, Integer) -> Bool)
     it "Multiplication is homomorphic" $
       property (homomorphicUnderMultiplication :: (Enc, Integer, Integer) -> Bool)
-    -- xit "Polynomial evaluation is homomorphic." $
-    --   property (homomorphicPolynomialEvaluation :: (SomeEncryption Integer, , PInt) -> Bool)
+    it "Polynomial evaluation is homomorphic." $
+      property (homomorphicPolynomialEvaluation :: (Enc, Polynomial Integer, Integer) -> Bool)
 
 
 homomorphicUnderPureAddition :: Integral a => (SomeEncryption a, a, a) -> Bool
@@ -36,10 +36,10 @@ homomorphicUnderMultiplication :: Integral a =>
 homomorphicUnderMultiplication (SomeEncryption enc, a, b) =
   mul (enc a) b == enc (a * b)
 
--- homomorphicPolynomialEvaluation :: Integral a =>
---                                    (SomeEncryption a, Polynomial a, Positive a) -> Bool
--- homomorphicPolynomialEvaluation (enc, p, Positive x) =
---   Just (encrypt enc (eval p x)) == evalEnc (encrypt enc 0) p [ encrypt enc (x ^ n) | n <- [0..] ]
+homomorphicPolynomialEvaluation :: Integral a =>
+                                   (SomeEncryption a, Polynomial a, a) -> Bool
+homomorphicPolynomialEvaluation (SomeEncryption enc, p, x) =
+  enc (eval p x) == evalEnc p [ enc (x ^ n) | n <- [(0 :: Integer)..] ]
   
 
 instance Integral a => Arbitrary (SomeEncryption a) where

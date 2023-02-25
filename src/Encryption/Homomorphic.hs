@@ -13,6 +13,7 @@ where
 
 import Data.FiniteField (Fin, fin)
 import Data.Kind (Type)
+import Data.Polynomial.Encrypted (PolynomialEncryption(..))
 import Data.Proxy (Proxy(Proxy))
 import GHC.TypeLits (Nat, SomeNat(..), KnownNat, natVal, someNatVal)
 
@@ -73,3 +74,7 @@ add a@(Encrypted proxyG proxyM _) b = a <> encrypt proxyG proxyM b
 mul :: (Integral a, KnownNat g, KnownNat m) => Encrypted g m a -> a -> Encrypted g m a
 mul (Encrypted proxyG proxyM a) b = Encrypted proxyG proxyM (a ^^ b)
 
+instance (KnownNat g, KnownNat m) => PolynomialEncryption (Encrypted g m) where
+  zero = Encrypted Proxy Proxy 1
+  addEnc = (<>)
+  mulEnc = mul
