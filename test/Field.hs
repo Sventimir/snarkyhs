@@ -2,13 +2,12 @@
  module Field ( testField ) where
 
 import Data.Proxy
-import Data.FiniteField (Fin, fin, primes)
+import Data.FiniteField (Fin, fin)
+import Generators
 import GHC.TypeLits
 import Test.Hspec
 import Test.QuickCheck
 
-newtype Prime = Prime Integer
-  deriving (Show, Eq)
 
 -- For some random boundary m.
 data F where
@@ -47,6 +46,10 @@ testField = do
       property $ (properInverse 1 recip (*) . \(NonZeroF a) -> F a)
     it "Multiplication distributes over addition." $
       property $ distributive (+) (*)
+    it "Reciprocal is its own reverse." $
+      property recipSelfReverse
+    it "Reciprocal is unique." $
+      property recipUnique
     
 
 associative :: (forall m. KnownNat m => Fin m Integer -> Fin m Integer -> Fin m Integer) ->
@@ -76,9 +79,15 @@ distributive :: (forall m. KnownNat m => Fin m Integer -> Fin m Integer -> Fin m
                 F3 -> Bool
 distributive add mul (F3 a b c) = a `mul` (b `add` c) == (a `mul` b) `add` (a `mul` c)
 
+recipSelfReverse :: NonZeroF -> Bool
+recipSelfReverse (NonZeroF a) = (recip $ recip a) == a
 
-instance Arbitrary Prime where
-  arbitrary = Prime <$> (elements $ take 1000 primes)
+recipUnique :: F2 -> Bool
+recipUnique (F2 a b)
+  | b == 0 = True -- inverse fails for 0, but it's cumbersome to exclude it.
+  | a * b == 1 = a == recip b
+  | otherwise = a /= recip b
+
 
 instance Arbitrary F where
   arbitrary = do

@@ -1,70 +1,75 @@
+{-# LANGUAGE DataKinds, GADTs, KindSignatures, ScopedTypeVariables #-}
 module Encryption.Homomorphic
-  ( EncryptionSpec(..)
-  , Encrypted
-  , encModulus
-  , encBase
-  , encValue
+  ( Encrypted
+  , SomeEncryption(..)
+  , proxyEncryption
+  , someEncryption
   , encrypt
-  , addEnc
-  , addEncPure
-  , mulEnc
-  , EncryptedGen
-  , encryptedGen
-  , genList )
+  , generator
+  , modulus
+  , add
+  , mul )
 where
 
-import Control.Monad.State.Lazy (StateT, MonadState(..), evalState)
+import Data.FiniteField (Fin, fin)
+import Data.Kind (Type)
+import Data.Proxy (Proxy(Proxy))
+import GHC.TypeLits (Nat, SomeNat(..), KnownNat, natVal, someNatVal)
 
 {- This module provides irreversible homomorphic encryption of numbers
    under which arithmetic operations can still be performed and
    equality relations between unencrypted values still hold for their
    encrypted representations. -}
+data Encrypted :: Nat -> Nat -> Type -> Type where
+  Encrypted :: (Integral a, KnownNat g, KnownNat m) => Proxy g -> Proxy m -> Fin m a -> Encrypted g m a
 
-data EncryptionSpec a = EncryptionSpec
-  { modulus, base :: a }
-  deriving Show
+data SomeEncryption :: Type -> Type where
+  SomeEncryption :: (KnownNat g, KnownNat m) => (a -> Encrypted g m a) -> SomeEncryption a
 
-data Encrypted a = Encrypted
-  { encModulus, encBase, encValue :: a }
-  deriving Eq
+generator :: Encrypted g m a -> Fin m a
+generator (Encrypted g m _) = fin m . fromInteger $ natVal g
 
-encrypt :: Integral a => EncryptionSpec a -> a -> Encrypted a
-encrypt spec a = Encrypted { encValue = (base spec ^ a) `mod` modulus spec
-                           , encModulus = modulus spec
-                           , encBase = base spec }
+modulus :: Encrypted g m a -> Integer
+modulus (Encrypted _ m _) = natVal m
 
-instance Show a => Show (Encrypted a) where
-  show enc = "<" <> (show $ encValue enc) <> ">"
+proxyEncryption :: (Integral a, KnownNat g, KnownNat m) =>
+                  Proxy g -> Proxy m -> SomeEncryption a
+proxyEncryption proxyG proxyM = SomeEncryption (encrypt proxyG proxyM)
 
-
-addEncPure :: Integral a => Encrypted a -> a -> Encrypted a
-addEncPure e a = e { encValue = encValue e * (encBase e ^ a) `mod` encModulus e }
-
--- Operation only makes sense if both encrypted values have the same base and modulus.
-addEnc :: Integral a => Encrypted a -> Encrypted a -> Maybe (Encrypted a)
-addEnc a b
-  | encBase a == encBase b && encModulus a == encModulus b =
-      Just (a { encValue = (encValue a * encValue b) `mod` encModulus a })
-  | otherwise = Nothing
-
-mulEnc :: Integral a => Encrypted a -> a -> Encrypted a
-mulEnc e a = e { encValue = (encValue e ^ a) `mod` encModulus e }
-
--- generates encrypted values of type a
-newtype EncryptedGen m a = EncryptedGen (StateT a m (Encrypted a))
-
-encryptedGen :: (Integral a, Monad m) => EncryptionSpec a -> (a -> a) -> EncryptedGen m a
-encryptedGen spec next = EncryptedGen generate
+someEncryption :: Integral a => Integer -> Integer -> SomeEncryption a
+someEncryption g m = case (someNatVal (abs g), someNatVal (abs m)) of
+                       (Just (SomeNat proxyG), Just (SomeNat proxyM)) ->
+                         proxyEncryption proxyG proxyM
+                       (_, _) -> error "Failed to create encryption!"
+                         
+encrypt :: (Integral a, KnownNat g, KnownNat m) => Proxy g -> Proxy m -> a -> Encrypted g m a
+encrypt (proxyG :: Proxy g) (proxyM :: Proxy m) a = Encrypted proxyG proxyM (g ^^ a)
   where
-  generate = do
-    g <- get
-    put (next g)
-    return $ encrypt spec g
+  g = fin proxyM . fromInteger $ natVal proxyG
 
-genList :: Integral a => EncryptionSpec a -> (a -> a) -> a -> [Encrypted a]
-genList spec next = evalState generateList 
-  where
-  EncryptedGen gen = encryptedGen spec next
-  generateList = do
-    g <- gen
-    (g :) <$> generateList
+instance Eq a => Eq (Encrypted g m a) where
+  (Encrypted _ _ a) == (Encrypted _ _ b) = a == b
+
+instance (Show a, KnownNat g, KnownNat m) => Show (Encrypted g m a) where
+  show e@(Encrypted _ _ f) = "<" <> show f <> " mod " <> show (generator e) <> ">"
+
+instance (Integral a, KnownNat g, KnownNat m) => Semigroup (Encrypted g m a) where
+  (Encrypted proxyG proxyM a) <> (Encrypted _ _ b) = Encrypted proxyG proxyM (a * b)
+
+instance (Integral a, KnownNat g, KnownNat m) => Monoid (Encrypted g m a) where
+  mempty = Encrypted Proxy Proxy 1
+
+-- This is hacky, sorry :D
+instance (Num a) => Show (SomeEncryption a) where
+  show (SomeEncryption enc) = "<encryption: g = " <> show g <> "; m = " <> show m <> ">"
+    where
+    Encrypted proxyG proxyM _ = enc 0
+    g = natVal proxyG
+    m = natVal proxyM
+
+add :: (Integral a, KnownNat g, KnownNat m) => Encrypted g m a -> a -> Encrypted g m a
+add a@(Encrypted proxyG proxyM _) b = a <> encrypt proxyG proxyM b
+
+mul :: (Integral a, KnownNat g, KnownNat m) => Encrypted g m a -> a -> Encrypted g m a
+mul (Encrypted proxyG proxyM a) b = Encrypted proxyG proxyM (a ^^ b)
+

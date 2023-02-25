@@ -58,6 +58,7 @@ test-suite snarkyhs-test
   other-modules:
       Encryption
       Field
+      Generators
       Polynomial
       Properties
       Paths_snarkyhs
