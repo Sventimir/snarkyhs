@@ -24,7 +24,9 @@ source-repository head
 
 library
   exposed-modules:
+      Data.FiniteField
       Data.Polynomial
+      Data.Polynomial.Encrypted
       Data.Ring
       Encryption.Homomorphic
   other-modules:
@@ -34,7 +36,7 @@ library
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints
   build-depends:
       base >=4.7 && <5
-    , groups
+    , mtl
   default-language: Haskell2010
 
 executable snarkyhs-exe
@@ -46,7 +48,7 @@ executable snarkyhs-exe
   ghc-options: -Wall -Wcompat -Widentities -Wincomplete-record-updates -Wincomplete-uni-patterns -Wmissing-export-lists -Wmissing-home-modules -Wpartial-fields -Wredundant-constraints -threaded -rtsopts -with-rtsopts=-N
   build-depends:
       base >=4.7 && <5
-    , groups
+    , mtl
     , snarkyhs
   default-language: Haskell2010
 
@@ -55,7 +57,9 @@ test-suite snarkyhs-test
   main-is: Spec.hs
   other-modules:
       Encryption
+      Field
       Polynomial
+      Properties
       Paths_snarkyhs
   hs-source-dirs:
       test
@@ -63,7 +67,7 @@ test-suite snarkyhs-test
   build-depends:
       QuickCheck
     , base >=4.7 && <5
-    , groups
     , hspec
+    , mtl
     , snarkyhs
   default-language: Haskell2010

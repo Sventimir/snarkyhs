@@ -1,11 +1,11 @@
 module Polynomial (testPolynomial) where
 
-import Data.Group (Group(..))
 import Data.List (sort)
 import Data.Polynomial
-import Data.Ring (Ring(..), zero) 
+import Data.Ring (Ring(..), (~~), zero) 
 import Test.Hspec
 import Test.QuickCheck hiding (scale)
+import Properties
 
 
 type P = Polynomial Integer
@@ -50,28 +50,13 @@ testPolynomial = do
     it "Result * divisor + the remainder gives the dividend." $
       property (divisionResultCheck :: P -> NonZeroPolynomial Integer -> Bool)
     it "Zero is neutral with respect to division" $
-      property $ \p -> p </> (unit :: P) == (p, mempty)
+      property $ \p -> p <//> (unit :: P) == (p, mempty)
     it "Division by itself returns unit." $
-      property $ \(NonZeroPolynomial p) -> (p :: P) </> p == (unit, mempty)
+      property $ \(NonZeroPolynomial p) -> (p :: P) <//> p == (unit, mempty)
     
-
-associative :: Eq a => (a -> a -> a) -> (a, a, a) -> Bool
-associative op (a, b, c) = ((a `op` b) `op` c) == (a `op` (b `op` c))
-
-commutative :: Eq a => (a -> a -> a) -> (a, a) -> Bool
-commutative op (a, b) = op a b == op b a
-
-neutral :: Eq a => (a -> a -> a) -> a -> a -> Bool
-neutral op neutr a = op a neutr == a
 
 scaleIsMult :: (P, Integer) -> Bool
 scaleIsMult (p, s) = scale s p == (p <.> fromCoefficients [s])
-
-distributive :: Eq a => (a -> a -> a) -> (a -> a -> a) -> (a, a, a) -> Bool
-distributive add mult (a, b, c) = a `mult` (b `add` c) == (a `mult` b) `add` (a `mult` c)
-
-multZeroIsZero :: (Eq r, Ring r) => r -> Bool
-multZeroIsZero r = r <.> zero == zero
 
 evalRootIsZero :: (Integer, [Integer]) -> Bool
 evalRootIsZero (scl, roots) = all evalRoot roots
@@ -98,7 +83,7 @@ polynomialMonotonicBeyondRoots (NonZero scl, NonEmpty rs, Positive eps)
 
 divisionResultCheck :: Integral a => Polynomial a -> NonZeroPolynomial a -> Bool
 divisionResultCheck a (NonZeroPolynomial b) =
-  let (q, r) = a </> b in
+  let (q, r) = a <//> b in
     (q <.> b) <> r == a
 
 instance (Eq a, Num a, Arbitrary a) => Arbitrary (Polynomial a) where

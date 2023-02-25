@@ -6,11 +6,10 @@ module Data.Polynomial
   , fromRoots
   , scale
   , degree
-  , (</>) )
+  , (<//>) )
 where
 
-import Data.Group (Group(..), Abelian)
-import Data.Ring (Ring(..), prod)
+import Data.Ring (Group(..), Ring(..), prod)
 
 data Polynomial a = Polynomial
   { coefficients :: [a] }
@@ -19,7 +18,7 @@ data Polynomial a = Polynomial
 instance (Ord a, Num a, Show a) => Show (Polynomial a) where
   show p@(Polynomial xs) = joinXs (degree p) xs
     where
-    showC c = if abs c == 1 then "" else show (abs c)
+    showC c x = if abs c == 1 && x > 0 then "" else show (abs c)
     showX 0 = ""
     showX 1 = "x"
     showX ex = "x^" <> show ex
@@ -28,10 +27,10 @@ instance (Ord a, Num a, Show a) => Show (Polynomial a) where
       | otherwise = " + "
     joinXs _ [] = "0"
     joinXs _ [c] = show c
-    joinXs d (c : cs) = showC c <> showX d <> joinRest (d - 1) cs
+    joinXs d (c : cs) = showC c d <> showX d <> joinRest (d - 1) cs
     joinRest _ [] = ""
     joinRest d (0 : cs) = joinRest (d - 1) cs
-    joinRest d (c : cs) = showSign c <> showC c <> showX d <> joinRest (d - 1) cs
+    joinRest d (c : cs) = showSign c <> showC c d <> showX d <> joinRest (d - 1) cs
 
 eval :: Num a => Polynomial a -> a -> a
 eval p x = fst . foldl addTerm (fromInteger 0, degree p) $ coefficients p
@@ -67,9 +66,7 @@ instance (Eq a, Num a) => Monoid (Polynomial a) where
   mempty = Polynomial []
 
 instance (Eq a, Num a) => Group (Polynomial a) where
-  invert (Polynomial ps) = Polynomial $ fmap negate ps
-
-instance (Eq a, Num a) => Abelian (Polynomial a) where
+  neg (Polynomial ps) = Polynomial $ fmap negate ps
 
 instance (Eq a, Num a) => Ring (Polynomial a) where
   unit = Polynomial [1]
@@ -104,20 +101,21 @@ equilong padding as bs = zip (pad as) (pad bs)
   len = max (length as) (length bs)
   pad xs = replicate (len - length xs) padding <> xs
 
-(</>) :: Integral a => Polynomial a -> Polynomial a -> (Polynomial a, Polynomial a)
-_ </> (Polynomial []) = error "Polynomial: division by 0 undefined."
-p </> divisor@(Polynomial ds) = divPolynomial mempty p
+(<//>) :: Integral a => Polynomial a -> Polynomial a -> (Polynomial a, Polynomial a)
+_ <//> (Polynomial []) = error "Polynomial: division by 0 undefined."
+p <//> divisor@(Polynomial ds) = longDivCheck mempty p
   where
   divisLen = length ds
-  divPolynomial acc (Polynomial coeffs) =
+  longDivCheck acc (Polynomial coeffs) =
     let degDiff = length coeffs - divisLen in
       if degDiff < 0
       then (normalize acc, Polynomial coeffs)
-      else
-        let (c, r) = divMod (head coeffs) (head ds)
-            acc' = Polynomial (c : replicate degDiff 0)
-            divis = divisor <.> scale (-1) acc'
-            remainder = Polynomial coeffs <> divis in
-          if r == 0
-          then divPolynomial (acc <> acc') $ normalize remainder
-          else (normalize (acc <> acc'), normalize remainder)
+      else longDivStep degDiff acc coeffs
+  longDivStep degDiff acc coeffs = 
+    let (c, r) = divMod (head coeffs) (head ds)
+        acc' = Polynomial (c : replicate degDiff 0)
+        divis = divisor <.> scale (-1) acc'
+        remainder = Polynomial coeffs <> divis in
+      if r == 0
+      then longDivCheck (acc <> acc') $ normalize remainder
+      else (normalize (acc <> acc'), normalize remainder)

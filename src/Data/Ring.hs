@@ -1,11 +1,16 @@
 module Data.Ring
-  ( Ring(..)
+  ( Group(..)
+  , Ring(..)
+  , (~~)
   , zero
   , prod
   ) where
 
-import Data.Group (Group(..))
+class Monoid g => Group g where
+  neg :: g -> g
 
+(~~) :: Group g => g -> g -> g
+a ~~ b = a <> neg b
 
 class Group r => Ring r where
   (<.>) :: r -> r -> r
