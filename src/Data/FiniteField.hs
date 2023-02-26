@@ -2,6 +2,7 @@
 module Data.FiniteField
   ( Fin
   , fin
+  , finMod
   , primes )
 where
 
@@ -16,6 +17,9 @@ data Fin :: Nat -> Type -> Type where
 
 deriving instance Eq a => Eq (Fin m a)
 deriving instance Ord a => Ord (Fin m a)
+
+finMod :: KnownNat m => Fin m a -> Integer
+finMod (Fin proxyM _) = natVal proxyM
 
 instance Show a => Show (Fin m a) where
   show (Fin Proxy a) = show a

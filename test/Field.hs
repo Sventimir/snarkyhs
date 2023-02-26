@@ -2,7 +2,7 @@
  module Field ( testField ) where
 
 import Data.Proxy
-import Data.FiniteField (Fin, fin)
+import Data.FiniteField (Fin, fin, finMod)
 import Generators
 import GHC.TypeLits
 import Test.Hspec
@@ -25,6 +25,11 @@ data NonZeroF where
 
 testField :: Spec
 testField = do
+  describe "Test finite field's structure." $ do
+    it "All values are smaller than the modulus." $
+      property alwaysSmallerThanModulus
+    it "All values lesser than or equal to zero" $
+      property alwaysGTEZero
   describe "Test algebraic properties of finite fields." $ do
     it "Field addition is associative." $
       property $ associative (+)
@@ -50,7 +55,14 @@ testField = do
       property recipSelfReverse
     it "Reciprocal is unique." $
       property recipUnique
-    
+    it "Any element is divisible by any other." $
+      property anyDividesAny
+
+alwaysSmallerThanModulus :: F -> Bool
+alwaysSmallerThanModulus (F f) = toInteger f < finMod f
+
+alwaysGTEZero :: F -> Bool
+alwaysGTEZero (F f) = toInteger f >= 0
 
 associative :: (forall m. KnownNat m => Fin m Integer -> Fin m Integer -> Fin m Integer) ->
                F3 -> Bool
@@ -87,6 +99,11 @@ recipUnique (F2 a b)
   | b == 0 = True -- inverse fails for 0, but it's cumbersome to exclude it.
   | a * b == 1 = a == recip b
   | otherwise = a /= recip b
+
+anyDividesAny :: F2 -> Bool
+anyDividesAny (F2 a b)
+  | b == 0 = True -- division by 0 is prohibited, but it's cumbersome to exclude it.
+  | otherwise = let c = a / b in a == b * c
 
 
 instance Arbitrary F where

@@ -8,12 +8,17 @@ module Encryption.Homomorphic
   , generator
   , modulus
   , add
-  , mul )
+  , mul
+  , Restricted
+  , restrict
+  , mulR
+  , verifyR
+  , withRestricted )
 where
 
 import Data.FiniteField (Fin, fin)
 import Data.Kind (Type)
-import Data.Polynomial.Encrypted (PolynomialEncryption(..))
+import Data.Polynomial.Encrypted (PolynomialEncryption(..), PolynomialRestrictedEncryption(..))
 import Data.Proxy (Proxy(Proxy))
 import GHC.TypeLits (Nat, SomeNat(..), KnownNat, natVal, someNatVal)
 
@@ -52,7 +57,7 @@ instance Eq a => Eq (Encrypted g m a) where
   (Encrypted _ _ a) == (Encrypted _ _ b) = a == b
 
 instance (Show a, KnownNat g, KnownNat m) => Show (Encrypted g m a) where
-  show e@(Encrypted _ _ f) = "<" <> show f <> " mod " <> show (generator e) <> ">"
+  show e@(Encrypted _ _ f) = "<" <> show f <> " mod " <> show (modulus e) <> ">"
 
 instance (Integral a, KnownNat g, KnownNat m) => Semigroup (Encrypted g m a) where
   (Encrypted proxyG proxyM a) <> (Encrypted _ _ b) = Encrypted proxyG proxyM (a * b)
@@ -78,3 +83,42 @@ instance (KnownNat g, KnownNat m) => PolynomialEncryption (Encrypted g m) where
   zero = Encrypted Proxy Proxy 1
   addEnc = (<>)
   mulEnc = mul
+
+data Restricted :: Nat -> Nat -> Type -> Type where
+  Restricted :: (KnownNat g, KnownNat m) =>
+                Encrypted g m a -> Encrypted g m a -> Restricted g m a
+
+
+-- Restrict an encrypted value by pairing it with another, shifted (multiplied)
+-- by some alpha. Such restricted value behaves just as a simple Encrypted,
+-- but performing any operation other than multiplication breaks the shifting
+-- relation and can be detected by the verifier provided that he has access to
+-- the original alpha.
+restrict :: (Integral a, KnownNat g, KnownNat m) =>
+            Encrypted g m a -> a -> Restricted g m a
+restrict enc alpha = Restricted enc (mul enc alpha)
+
+instance Eq a => Eq (Restricted g m a) where
+  (Restricted a a') == (Restricted b b') = a == b && a' == b'
+
+instance (Show a, KnownNat g, KnownNat m) => Show (Restricted g m a) where
+  show (Restricted (Encrypted _ proxyM a) (Encrypted _ _ a')) =
+    "<" <> show a <> ", " <> show a' <> " mod " <> show (natVal proxyM) <> ">"
+
+-- Given the original alpha-shift, verify that the relation is preserved in
+-- the given restricted value. If it is, it means that the original restricted
+-- value was only ever multiplied; never added to.
+verifyR :: (Integral a, KnownNat g, KnownNat m) => a -> Restricted g m a -> Bool
+verifyR alpha (Restricted a a') = mul a alpha == a'
+
+-- This function is useful in tests, so that we can perform arbitrary
+-- operations on restricted values and show that they break the alpha-shift.
+withRestricted :: (KnownNat g, KnownNat m) =>
+                  (Encrypted g m a -> Encrypted g m a) -> Restricted g m a -> Restricted g m a
+withRestricted f (Restricted a a') = Restricted (f a) (f a')
+
+instance (KnownNat g, KnownNat m) =>
+         PolynomialRestrictedEncryption (Restricted g m) where
+  zeroR = Restricted zero zero
+  addR (Restricted a a') (Restricted b b') = Restricted (a <> b) (a' <> b')
+  mulR (Restricted a a') b = Restricted (mul a b) (mul a' b)
