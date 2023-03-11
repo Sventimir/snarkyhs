@@ -3,6 +3,7 @@ module Data.FiniteField
   ( Fin
   , fin
   , finMod
+  , cast
   , primes )
 where
 
@@ -69,8 +70,11 @@ instance (Integral a, KnownNat m) => Fractional (Fin m a) where
 fin :: (KnownNat m, Integral a) => Proxy m -> a -> Fin m a
 fin proxy a = Fin Proxy $ mod a (fromInteger $ natVal proxy)
 
+cast :: (KnownNat m, Integral a) => Proxy m -> Fin n a -> Fin m a
+cast proxyM (Fin Proxy a) = Fin proxyM a
+
 primes :: [Integer]
-primes = genPrimes [2]
+primes = 2 : genPrimes [2]
   where
   genPrimes :: [Integer] -> [Integer]
   genPrimes [] = 2 : genPrimes [2]

@@ -25,6 +25,7 @@ source-repository head
 library
   exposed-modules:
       Data.FiniteField
+      Data.LinEquationSystem
       Data.Polynomial
       Data.Polynomial.Encrypted
       Data.Ring
@@ -57,6 +58,7 @@ test-suite snarkyhs-test
   main-is: Spec.hs
   other-modules:
       Encryption
+      EquationSolver
       Field
       Generators
       Polynomial

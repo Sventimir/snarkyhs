@@ -1,6 +1,10 @@
+{-# LANGUAGE DataKinds, GADTs, KindSignatures, ScopedTypeVariables #-}
 module Generators where
 
-import Data.FiniteField (primes)
+import Data.FiniteField (Fin, fin, primes)
+import Data.Kind
+import Data.Proxy
+import GHC.TypeLits
 import Test.Hspec
 import Test.QuickCheck
 
@@ -30,3 +34,10 @@ newtype RestrictionAlpha a = RestrictionAlpha a
 
 instance (Num a, Eq a, Arbitrary a) => Arbitrary (RestrictionAlpha a) where
   arbitrary = RestrictionAlpha <$> arbitrary `suchThat` (\x -> x /= 0 && x /= 1)
+
+instance (Integral a, KnownNat m) => Arbitrary (Fin m a) where
+  arbitrary =
+    let proxy = Proxy :: Proxy m
+        modulus = fromInteger $ natVal proxy in
+    fin proxy . fromInteger <$> chooseInteger (0, pred modulus)
+    

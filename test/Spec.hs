@@ -1,4 +1,5 @@
 import Encryption
+import EquationSolver
 import Field
 import Generators
 import Polynomial
@@ -10,3 +11,4 @@ main = hspec $ do
   testField
   testPolynomial
   testEncryption
+  testEquationSolver
